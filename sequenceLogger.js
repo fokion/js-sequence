@@ -1,5 +1,7 @@
 window["LOGGER"] = {};
 window["LOGGER"]["log"] = true;
+window["LOGGER"]["ignoredClasses"] = [];
+window["LOGGER"]["ignoredMethods"] = [];
 window["LOGGER"]["sequence"] = [];
 window["LOGGER"]["prevElement"] = null;
 window["LOGGER"]["generateSequence"] = function(title){
@@ -7,6 +9,7 @@ window["LOGGER"]["generateSequence"] = function(title){
   var prev = null;
   window["LOGGER"]["sequence"].forEach(function(element){
     if(prev){
+      arr.push("Note right of "+prev["caller"]+" : "+prev["func"]);
       arr.push(prev["caller"] + " -> " + element["caller"]+" : "+element["func"]+" {"+element["args"].join(",")+"}");
     }
     prev = element;
@@ -22,8 +25,12 @@ window["LOGGER"]["logGenerator"] = function(callerName , functionName , argument
 };
 window["LOGGER"]["getFunctionLogged"] = function(caller, func , name){
   return function() {
-        if (window["LOGGER"]["log"] ) {
-            window["LOGGER"]["sequence"].push(window["LOGGER"]["logGenerator"](caller, name,arguments));
+        if (window["LOGGER"]["log"]) {
+          if(window["LOGGER"]["ignoredClasses"].indexOf(caller) === -1){
+            if(window["LOGGER"]["ignoredMethods"].indexOf(name) === -1){
+              window["LOGGER"]["sequence"].push(window["LOGGER"]["logGenerator"](caller, name,arguments));
+             }
+          }
         }
         return func.apply(this, arguments);
     }
