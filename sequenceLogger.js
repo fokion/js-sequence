@@ -1,6 +1,6 @@
 window["LOGGER"] = {};
 window["LOGGER"]["log"] = true;
-window["LOGGER"]["ignoredClasses"] = [];
+window["LOGGER"]["ignoredClasses"] = ["LOGGER"];
 window["LOGGER"]["ignoredMethods"] = [];
 window["LOGGER"]["sequence"] = [];
 window["LOGGER"]["prevElement"] = null;
@@ -9,8 +9,11 @@ window["LOGGER"]["generateSequence"] = function(title){
   var prev = null;
   window["LOGGER"]["sequence"].forEach(function(element){
     if(prev){
+      if(element["caller"]!== "WINDOW"){
       arr.push("Note right of "+prev["caller"]+" : "+prev["func"]);
-      arr.push(prev["caller"] + " -> " + element["caller"]+" : "+element["func"]+" {"+element["args"].join(",")+"}");
+      var argsStr = element["args"].length > 0 ?  "("+element["args"].join(",")+")" : "";
+      arr.push(prev["caller"] + " -> " + element["caller"]+" : "+element["func"]+argsStr);
+     }
     }
     prev = element;
   });
@@ -35,14 +38,31 @@ window["LOGGER"]["getFunctionLogged"] = function(caller, func , name){
         return func.apply(this, arguments);
     }
 };
-window["LOGGER"]["addClassForLogging"] = function(objectToRecord){
-  for(var name in objectToRecord){
-    var functionToLog = objectToRecord[name];
-    if(Object.prototype.toString.call(functionToLog) === '[object Object]'){
-      window["LOGGER"]["addClassForLogging"](functionToLog);
+window["LOGGER"]["addClassForLogging"] = function(target){
+  var targets = Object.getOwnPropertyNames (target);
+  targets.forEach(function(name){
+    var toLog = target[name];
+    if(Object.prototype.toString.call(toLog) === '[object Object]'){
+      window["LOGGER"]["addClassForLogging"](toLog);
+    }else if(Object.prototype.toString.call(toLog) === '[object Function]'){
+        target[name] = window["LOGGER"].getFunctionLogged(target.constructor.name , toLog, name);
+    }else if(toLog && toLog.constructor === Array){
+      toLog.forEach(function(arrElement){
+        window["LOGGER"]["addClassForLogging"](arrElement);
+      });
     }
-    if(Object.prototype.toString.call(functionToLog) === '[object Function]'){
-        objectToRecord[name] = window["LOGGER"].getFunctionLogged(objectToRecord.constructor.name , functionToLog, name);
-    }
-  }
+  });
+
+};
+window["LOGGER"]["clearAndRecordForMinutes"] = function(name , minutes , seconds , handler){
+   window["LOGGER"]["log"] = true;
+   window["LOGGER"]["sequence"] = [];
+   var recordingName = name?name:"Recording at "+Date.now();
+   var secs = minutes*60+seconds;
+   setTimeout(function(){
+      clearInterval(interval);
+      handler(window["LOGGER"]["generateSequence"](recordingName));
+   },
+   secs*1000);
+   var interval = setInterval(function(){console.log(--secs);},1000);
 };
